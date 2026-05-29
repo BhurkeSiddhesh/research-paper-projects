@@ -17,6 +17,7 @@
 - Implementing the side project based on InvAgent (arXiv:2407.11384): A Multi-Agent System for Supply Chain Inventory Management using LLMs.
 
 ## Change Log
+- 2026-05-29: Created comprehensive README.md documenting InvAgent (arXiv:2407.11384) and Optimization Heuristics (arXiv:2503.03350). Set up task.md tracking ledger. Prepared repository for default main branch commit.
 - 2026-05-28: Selected InvAgent (2407.11384) for the side project. Created implementation plan.
 - 2026-05-28: Initialized project workspace, added AGENTS.md and JULES_LOG.json.
 
