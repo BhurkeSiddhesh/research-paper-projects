@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="InvAgent Supply Chain Dashboard">
+    <title>InvAgent - LLM Supply Chain MAS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="glass-panel">
+            <div class="logo">
+                <h1>Inv<span>Agent</span></h1>
+            </div>
+            <div class="controls">
+                <button id="reset-btn" class="btn btn-secondary">Reset Simulation</button>
+                <button id="step-btn" class="btn btn-primary">Step Simulation</button>
+            </div>
+        </header>
+
+        <main>
+            <!-- System Overview -->
+            <section class="overview glass-panel">
+                <div class="metric">
+                    <h3>Current Time Step</h3>
+                    <p id="time-val" class="highlight-val">0</p>
+                </div>
+                <div class="metric">
+                    <h3>Customer Demand</h3>
+                    <p id="demand-val" class="highlight-val">-</p>
+                </div>
+                <div class="metric">
+                    <h3>Retailer Total Cost</h3>
+                    <p id="retailer-cost-val" class="highlight-val">0</p>
+                </div>
+                <div class="metric">
+                    <h3>Distributor Total Cost</h3>
+                    <p id="distributor-cost-val" class="highlight-val">0</p>
+                </div>
+            </section>
+
+            <div class="agents-container">
+                <!-- Retailer Node -->
+                <section class="agent-node glass-panel" id="retailer-node">
+                    <div class="node-header">
+                        <h2>Retailer Agent</h2>
+                        <span class="status-badge pulse">Active</span>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat">
+                            <span class="label">Inventory</span>
+                            <span class="val" id="ret-inv">50</span>
+                        </div>
+                        <div class="stat">
+                            <span class="label">Backlog</span>
+                            <span class="val" id="ret-back">0</span>
+                        </div>
+                        <div class="stat">
+                            <span class="label">In Transit</span>
+                            <span class="val" id="ret-trans">0</span>
+                        </div>
+                    </div>
+                    <div class="reasoning-box">
+                        <h3>LLM Chain-of-Thought</h3>
+                        <p id="ret-reasoning" class="cot-text">Waiting for simulation step...</p>
+                        <div class="decision-pill">
+                            Decision: <strong id="ret-decision">Order 0</strong>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Connection line -->
+                <div class="flow-arrow">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </div>
+
+                <!-- Distributor Node -->
+                <section class="agent-node glass-panel" id="distributor-node">
+                    <div class="node-header">
+                        <h2>Distributor Agent</h2>
+                        <span class="status-badge pulse">Active</span>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat">
+                            <span class="label">Inventory</span>
+                            <span class="val" id="dist-inv">50</span>
+                        </div>
+                        <div class="stat">
+                            <span class="label">Backlog</span>
+                            <span class="val" id="dist-back">0</span>
+                        </div>
+                        <div class="stat">
+                            <span class="label">In Transit</span>
+                            <span class="val" id="dist-trans">0</span>
+                        </div>
+                    </div>
+                    <div class="reasoning-box">
+                        <h3>LLM Chain-of-Thought</h3>
+                        <p id="dist-reasoning" class="cot-text">Waiting for simulation step...</p>
+                        <div class="decision-pill">
+                            Decision: <strong id="dist-decision">Order 0</strong>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Connection line -->
+                <div class="flow-arrow">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </div>
+                
+                <!-- Supplier Node (Static) -->
+                <section class="agent-node static-node glass-panel" id="supplier-node">
+                    <div class="node-header">
+                        <h2>External Supplier</h2>
+                    </div>
+                    <div class="reasoning-box">
+                        <p class="cot-text">Infinite capacity. Fulfills distributor orders immediately with set lead time.</p>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
