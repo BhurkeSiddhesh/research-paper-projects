@@ -3,7 +3,7 @@ services:
   - type: web
     name: invagent-backend
     runtime: python
-    rootDir: invagent/backend
+    rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
@@ -14,7 +14,7 @@ services:
   - type: web
     name: invagent-frontend
     runtime: static
-    rootDir: invagent/frontend
+    rootDir: frontend
     buildCommand: |
       echo "window.API_BASE_URL = '${BACKEND_URL}';" > api_config.js
     staticPublishPath: .
