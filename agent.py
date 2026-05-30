@@ -39,10 +39,11 @@ class LLMAgent:
             f"- Backlog (unmet)    : {state['backlog']} units\n"
             f"- In-transit orders  : {state['in_transit']} units\n"
             f"- Cost structure     : {cost_line}\n\n"
-            f"Use step-by-step Chain-of-Thought reasoning to decide how many units "
-            f"to order from your upstream supplier this period.\n\n"
-            f"Reply with ONLY valid JSON — no markdown, no text outside the object:\n"
-            f'{{ "reasoning": "<your step-by-step logic>", "order_quantity": <non-negative integer> }}'
+            f"Decide how many units to order from your upstream supplier this period.\n\n"
+            f"IMPORTANT: reply with ONLY a single-line JSON object. "
+            f"Put all reasoning on ONE line (use '; ' not newlines to separate steps). "
+            f"No markdown, no extra text:\n"
+            f'{{ "reasoning": "step1; step2; step3", "order_quantity": 5 }}'
         )
 
     def _parse_response(self, text, fallback_state):
@@ -51,30 +52,40 @@ class LLMAgent:
         text = re.sub(r"^```(?:json)?\s*", "", text)
         text = re.sub(r"\s*```$", "", text)
 
-        for candidate in [text, re.sub(r'\n', r'\\n', text)]:
+        # Tier 1: standard JSON parse, then with newlines escaped
+        for candidate in [text, re.sub(r'(?<!\\)\n', r'\\n', text)]:
             try:
                 data = json.loads(candidate)
                 return {
-                    "reasoning": str(data.get("reasoning", candidate[:300])),
+                    "reasoning": str(data.get("reasoning", candidate[:500])),
                     "order_quantity": max(0, int(data.get("order_quantity", 0)))
                 }
             except Exception:
                 pass
-            # Try to find embedded JSON object
             match = re.search(r'\{.*\}', candidate, re.DOTALL)
             if match:
                 try:
                     data = json.loads(match.group())
                     return {
-                        "reasoning": str(data.get("reasoning", candidate[:300])),
+                        "reasoning": str(data.get("reasoning", candidate[:500])),
                         "order_quantity": max(0, int(data.get("order_quantity", 0)))
                     }
                 except Exception:
                     pass
 
-        # Unparseable — fall back to mock so simulation keeps running
+        # Tier 2: regex extraction — works even on structurally broken JSON
+        order_match    = re.search(r'"order_quantity"\s*:\s*(\d+)', text)
+        reasoning_match = re.search(r'"reasoning"\s*:\s*"((?:[^"\\]|\\.|\n)*)', text)
+        if order_match:
+            return {
+                "reasoning": (reasoning_match.group(1).replace('\\n', ' ').strip()
+                              if reasoning_match else text[:500]),
+                "order_quantity": max(0, int(order_match.group(1)))
+            }
+
+        # Tier 3: give up, run mock and tag it
         mock = self._mock_llm_call(fallback_state)
-        mock["reasoning"] = f"[Parse error — raw: {text[:200]}] {mock['reasoning']}"
+        mock["reasoning"] = f"[LLM parse failed — raw: {text[:150]}]"
         return mock
 
     # ── Providers ──────────────────────────────────────────────────────────
