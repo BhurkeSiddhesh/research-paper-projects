@@ -22,6 +22,43 @@
             </div>
         </header>
 
+        <!-- Research Paper Walkthrough -->
+        <section class="glass-panel" id="paper-flow-panel">
+            <div class="pf-header">
+                <div class="pf-title-block">
+                    <span class="pf-label">Research Paper Walkthrough</span>
+                    <h2>arXiv:2407.11384 — InvAgent</h2>
+                </div>
+                <span class="pf-progress"><span id="pf-step-num">—</span> / <span id="pf-step-total">—</span></span>
+            </div>
+
+            <!-- Step timeline -->
+            <div class="pf-timeline" id="pf-timeline"></div>
+
+            <!-- Step content -->
+            <div class="pf-content">
+                <div class="pf-step-heading">
+                    <span class="pf-step-title" id="pf-title">Loading…</span>
+                    <span class="pf-step-subtitle" id="pf-subtitle"></span>
+                </div>
+                <p class="pf-concept" id="pf-concept"></p>
+                <div class="pf-insight-box">
+                    <span class="pf-insight-label">Key Insight</span>
+                    <p id="pf-insight"></p>
+                </div>
+                <div class="pf-observe-box">
+                    <span class="pf-observe-label">Watch in the simulation</span>
+                    <p id="pf-observe"></p>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="pf-nav">
+                <button id="pf-prev" class="btn btn-secondary" disabled>← Prev</button>
+                <button id="pf-next" class="btn btn-primary">Next →</button>
+            </div>
+        </section>
+
         <main>
             <!-- System Overview -->
             <section class="overview glass-panel">
@@ -156,5 +193,6 @@
         </main>
     </div>
     <script src="app.js"></script>
+    <script src="paper_flow.js"></script>
 </body>
 </html>

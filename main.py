@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from environment import SupplyChainEnv
 from agent import LLMAgent
+from paper_flow import PAPER_STEPS
 
 app = FastAPI()
 
@@ -65,6 +66,63 @@ def get_state():
     if env is None:
         reset_simulation()
     return {"state": env.get_state()}
+
+@app.get("/api/paper/steps")
+def get_paper_steps():
+    return {
+        "steps": [
+            {"id": s["id"], "title": s["title"], "subtitle": s["subtitle"]}
+            for s in PAPER_STEPS
+        ]
+    }
+
+@app.post("/api/paper/step/{step_id}")
+def run_paper_step(step_id: int):
+    global env, retailer_agent, distributor_agent
+    step = next((s for s in PAPER_STEPS if s["id"] == step_id), None)
+    if not step:
+        return {"error": "Step not found"}
+
+    sim_result = None
+
+    if step["simulation_action"] == "reset":
+        env = SupplyChainEnv()
+        retailer_agent = LLMAgent(role="Retailer", use_mock=True)
+        distributor_agent = LLMAgent(role="Distributor", use_mock=True)
+
+    elif step["simulation_action"] == "step":
+        if env is None:
+            env = SupplyChainEnv()
+            retailer_agent = LLMAgent(role="Retailer", use_mock=True)
+            distributor_agent = LLMAgent(role="Distributor", use_mock=True)
+        state = env.get_state()
+        retailer_state = {**state["retailer"], "time": state["time"]}
+        distributor_state = {**state["distributor"], "time": state["time"]}
+        retailer_decision = retailer_agent.generate_order_decision(retailer_state)
+        distributor_decision = distributor_agent.generate_order_decision(distributor_state)
+        step_details = env.step_refined(
+            retailer_decision["order_quantity"],
+            distributor_decision["order_quantity"]
+        )
+        sim_result = {
+            "decisions": {
+                "retailer": retailer_decision,
+                "distributor": distributor_decision
+            },
+            "step_details": step_details
+        }
+
+    else:  # observe — no sim change
+        if env is None:
+            env = SupplyChainEnv()
+            retailer_agent = LLMAgent(role="Retailer", use_mock=True)
+            distributor_agent = LLMAgent(role="Distributor", use_mock=True)
+
+    return {
+        "step": step,
+        "state": env.get_state(),
+        "sim_result": sim_result
+    }
 
 # Serve frontend static files — must come after all /api routes
 app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")

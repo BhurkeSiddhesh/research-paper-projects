@@ -281,7 +281,236 @@ header {
     color: var(--panel-border);
 }
 
-/* Animations */
+/* ── Paper Flow Panel ───────────────────────────────────────────────── */
+#paper-flow-panel {
+    padding: 1.75rem 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.pf-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.pf-title-block {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.pf-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent-secondary);
+    font-weight: 600;
+}
+
+.pf-title-block h2 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.pf-progress {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--panel-border);
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    white-space: nowrap;
+}
+
+/* Timeline dots */
+.pf-timeline {
+    display: flex;
+    gap: 0;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+    scrollbar-width: none;
+}
+.pf-timeline::-webkit-scrollbar { display: none; }
+
+.pf-dot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    flex: 1;
+    min-width: 60px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    position: relative;
+    color: var(--text-muted);
+    transition: color 0.2s;
+}
+
+.pf-dot::before {
+    content: '';
+    position: absolute;
+    top: 11px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--panel-border);
+    z-index: 0;
+}
+.pf-dot:first-child::before { left: 50%; }
+.pf-dot:last-child::before  { right: 50%; }
+
+.pf-dot-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.06);
+    border: 2px solid var(--panel-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    z-index: 1;
+    transition: all 0.2s;
+}
+
+.pf-dot-label {
+    font-size: 0.6rem;
+    text-align: center;
+    line-height: 1.2;
+    font-weight: 500;
+}
+
+.pf-dot.active {
+    color: var(--accent-primary);
+}
+.pf-dot.active .pf-dot-num {
+    background: var(--accent-primary);
+    border-color: var(--accent-primary);
+    color: white;
+    box-shadow: 0 0 10px var(--accent-glow);
+}
+
+.pf-dot.done {
+    color: var(--success);
+}
+.pf-dot.done .pf-dot-num {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: var(--success);
+    color: var(--success);
+}
+
+/* Step content */
+.pf-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    animation: fadeIn 0.3s ease;
+}
+
+.pf-step-heading {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.pf-step-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.pf-step-subtitle {
+    font-size: 0.875rem;
+    color: var(--accent-primary);
+    font-weight: 500;
+}
+
+.pf-concept {
+    font-size: 0.925rem;
+    line-height: 1.65;
+    color: var(--text-muted);
+}
+
+.pf-insight-box {
+    background: rgba(139, 92, 246, 0.08);
+    border: 1px solid rgba(139, 92, 246, 0.25);
+    border-left: 3px solid var(--accent-secondary);
+    border-radius: 10px;
+    padding: 0.9rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.pf-insight-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent-secondary);
+    font-weight: 700;
+}
+
+.pf-insight-box p {
+    font-size: 0.9rem;
+    line-height: 1.55;
+    color: var(--text-main);
+    font-style: italic;
+}
+
+.pf-observe-box {
+    background: rgba(59, 130, 246, 0.06);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-left: 3px solid var(--accent-primary);
+    border-radius: 10px;
+    padding: 0.9rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.pf-observe-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent-primary);
+    font-weight: 700;
+}
+
+.pf-observe-box p {
+    font-size: 0.875rem;
+    line-height: 1.55;
+    color: var(--text-muted);
+}
+
+.pf-nav {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+}
+
+/* Highlight pulse when a section is pointed to by the flow */
+@keyframes highlightPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5); }
+    50%  { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.15); }
+    100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+}
+
+.pf-highlight {
+    animation: highlightPulse 1.5s ease 2;
+    outline: 1px solid rgba(59, 130, 246, 0.4);
+    outline-offset: 3px;
+    border-radius: 16px;
+}
+
+/* ── Animations ─────────────────────────────────────────────────────── */
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
@@ -421,6 +650,15 @@ header {
     }
 }
 
+/* Paper flow — tablet */
+@media (max-width: 900px) {
+    #paper-flow-panel {
+        padding: 1.25rem;
+    }
+    .pf-dot-label { display: none; }
+    .pf-dot { min-width: 40px; }
+}
+
 /* Mobile */
 @media (max-width: 600px) {
     body {
@@ -530,4 +768,12 @@ header {
         font-size: 0.78rem;
         padding-left: 1.85rem;
     }
+
+    /* Paper flow mobile */
+    #paper-flow-panel { padding: 1rem; gap: 1rem; }
+    .pf-title-block h2 { font-size: 0.9rem; }
+    .pf-step-title { font-size: 1rem; }
+    .pf-concept { font-size: 0.85rem; }
+    .pf-nav { justify-content: stretch; }
+    .pf-nav .btn { flex: 1; }
 }
