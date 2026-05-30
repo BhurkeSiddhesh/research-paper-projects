@@ -1,4 +1,6 @@
-const API_URL = 'http://localhost:8000/api';
+// In production, window.API_BASE_URL is injected by the Render static site build.
+// For local dev it falls back to localhost.
+const API_URL = (window.API_BASE_URL || 'http://localhost:8000') + '/api';
 
 const elements = {
     time: document.getElementById('time-val'),
