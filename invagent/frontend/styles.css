@@ -294,3 +294,97 @@ header {
 .agent-node:nth-child(1) { animation-delay: 0.1s; }
 .agent-node:nth-child(3) { animation-delay: 0.2s; }
 .agent-node:nth-child(5) { animation-delay: 0.3s; }
+
+/* Workflow Log Panel */
+.workflow-log {
+    padding: 1.5rem 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.workflow-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.workflow-header h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.step-tag {
+    font-size: 0.75rem;
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--accent-primary);
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-weight: 600;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    letter-spacing: 0.03em;
+}
+
+#workflow-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateX(-12px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+.workflow-item {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    padding: 0.55rem 0.9rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    border-left: 2px solid var(--accent-primary);
+    animation: slideIn 0.3s ease forwards;
+    opacity: 0;
+}
+
+.workflow-index {
+    font-size: 0.7rem;
+    color: var(--accent-primary);
+    font-weight: 700;
+    min-width: 1.1rem;
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.workflow-phase {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-main);
+    min-width: 210px;
+    flex-shrink: 0;
+}
+
+.workflow-detail {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-family: monospace;
+    line-height: 1.4;
+}
+
+.workflow-empty {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 2rem;
+    font-style: italic;
+}
+
+.workflow-error {
+    font-size: 0.875rem;
+    color: var(--danger);
+    padding: 1rem;
+    background: rgba(239, 68, 68, 0.08);
+    border-radius: 8px;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}

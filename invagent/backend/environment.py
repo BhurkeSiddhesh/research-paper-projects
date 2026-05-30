@@ -108,29 +108,38 @@ class SupplyChainEnv:
     # Let's do a refined step
     def step_refined(self, retailer_order, distributor_order):
         self.current_time += 1
-        
+        workflow_log = []
+
         # Customer demand
         customer_demand = self.generate_customer_demand()
-        
+        workflow_log.append({"phase": "Demand", "detail": f"Customer demand of {customer_demand} units generated"})
+
         # --- Distributor Phase ---
-        # Distributor receives shipments from Supplier (assume Supplier always fulfills fully)
         dist_arrived = self.nodes["Distributor"].receive_shipments(self.current_time)
-        # Distributor fulfills Retailer's order
+        workflow_log.append({"phase": "Distributor: Receive", "detail": f"{dist_arrived} units arrived from Supplier"})
+
         dist_fulfilled = self.nodes["Distributor"].fulfill_demand(retailer_order)
+        dist_note = "fully fulfilled" if dist_fulfilled >= retailer_order else f"partial — {retailer_order - dist_fulfilled} backordered"
+        workflow_log.append({"phase": "Distributor: Fulfill Retailer", "detail": f"Retailer ordered {retailer_order} → {dist_fulfilled} dispatched, {dist_note}"})
+
         dist_cost = self.nodes["Distributor"].calculate_costs()
-        # Distributor places order to Supplier
         self.nodes["Distributor"].place_order(distributor_order, self.current_time)
-        
+        workflow_log.append({"phase": "Distributor: Reorder", "detail": f"Placed order for {distributor_order} units to Supplier (arrives in 2 steps)"})
+
         # --- Retailer Phase ---
-        # Retailer receives shipments (these were dispatched by Distributor in the past)
-        # We need a way to schedule when the dist_fulfilled amount arrives at the Retailer.
-        # Let's say Retailer lead_time is 1. So what Distributor fulfills now, Retailer gets at current_time + 1.
         self.nodes["Retailer"].in_transit.append((self.current_time + self.nodes["Retailer"].lead_time, dist_fulfilled))
-        
+
         ret_arrived = self.nodes["Retailer"].receive_shipments(self.current_time)
+        workflow_log.append({"phase": "Retailer: Receive", "detail": f"{ret_arrived} units arrived from Distributor"})
+
         ret_fulfilled = self.nodes["Retailer"].fulfill_demand(customer_demand)
+        ret_note = "fully fulfilled" if ret_fulfilled >= customer_demand else f"partial — {customer_demand - ret_fulfilled} backordered"
+        workflow_log.append({"phase": "Retailer: Fulfill Customer", "detail": f"Customer demand {customer_demand} → {ret_fulfilled} dispatched, {ret_note}"})
+
         ret_cost = self.nodes["Retailer"].calculate_costs()
-        
+        combined = dist_cost + ret_cost
+        workflow_log.append({"phase": "Costs", "detail": f"Retailer: ${ret_cost:.2f} | Distributor: ${dist_cost:.2f} | Combined: ${combined:.2f}"})
+
         # Log state
         self.nodes["Distributor"].history.append({
             "time": self.current_time,
@@ -141,7 +150,7 @@ class SupplyChainEnv:
             "order_placed": distributor_order,
             "cost": dist_cost
         })
-        
+
         self.nodes["Retailer"].history.append({
             "time": self.current_time,
             "inventory": self.nodes["Retailer"].inventory,
@@ -151,12 +160,13 @@ class SupplyChainEnv:
             "order_placed": retailer_order,
             "cost": ret_cost
         })
-        
+
         return {
             "time": self.current_time,
             "customer_demand": customer_demand,
             "retailer": self.nodes["Retailer"].history[-1],
-            "distributor": self.nodes["Distributor"].history[-1]
+            "distributor": self.nodes["Distributor"].history[-1],
+            "workflow_log": workflow_log
         }
 
     def get_state(self):

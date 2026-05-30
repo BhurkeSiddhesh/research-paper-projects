@@ -35,12 +35,16 @@ def step_simulation():
         reset_simulation()
         
     state = env.get_state()
-    
+
+    # Merge time into node states so agents can reference it in their prompts
+    retailer_state = {**state["retailer"], "time": state["time"]}
+    distributor_state = {**state["distributor"], "time": state["time"]}
+
     # 1. Retailer Agent decides order quantity based on its state
-    retailer_decision = retailer_agent.generate_order_decision(state["retailer"])
-    
+    retailer_decision = retailer_agent.generate_order_decision(retailer_state)
+
     # 2. Distributor Agent decides order quantity based on its state
-    distributor_decision = distributor_agent.generate_order_decision(state["distributor"])
+    distributor_decision = distributor_agent.generate_order_decision(distributor_state)
     
     # 3. Environment steps forward using the decisions
     step_result = env.step_refined(retailer_decision["order_quantity"], distributor_decision["order_quantity"])

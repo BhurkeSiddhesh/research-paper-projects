@@ -121,12 +121,38 @@
                     <div class="node-header">
                         <h2>External Supplier</h2>
                     </div>
+                    <div class="stats-grid">
+                        <div class="stat">
+                            <span class="label">Capacity</span>
+                            <span class="val">∞</span>
+                        </div>
+                        <div class="stat">
+                            <span class="label">Lead Time</span>
+                            <span class="val">2</span>
+                        </div>
+                        <div class="stat">
+                            <span class="label">Status</span>
+                            <span class="val" style="color: var(--success);">Ready</span>
+                        </div>
+                    </div>
                     <div class="reasoning-box">
-                        <p class="cot-text">Infinite capacity. Fulfills distributor orders immediately with set lead time.</p>
+                        <p class="cot-text">Infinite capacity. Fulfills distributor orders with a 2-step lead time.</p>
                     </div>
                 </section>
 
             </div>
+
+            <!-- Workflow Execution Log -->
+            <section class="workflow-log glass-panel" id="workflow-log-panel">
+                <div class="workflow-header">
+                    <h2>Workflow Execution Trace</h2>
+                    <span class="step-tag" id="step-tag">—</span>
+                </div>
+                <div id="workflow-steps">
+                    <div class="workflow-empty">Press "Step Simulation" to see the execution trace.</div>
+                </div>
+            </section>
+
         </main>
     </div>
     <script src="app.js"></script>
