@@ -3,9 +3,8 @@ services:
   - type: web
     name: invagent-backend
     runtime: python
-    rootDir: backend
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.0"
@@ -14,10 +13,8 @@ services:
   - type: web
     name: invagent-frontend
     runtime: static
-    rootDir: frontend
-    buildCommand: |
-      echo "window.API_BASE_URL = '${BACKEND_URL}';" > api_config.js
-    staticPublishPath: .
+    buildCommand: echo "window.API_BASE_URL = '${BACKEND_URL}';" > frontend/api_config.js
+    staticPublishPath: frontend
     headers:
       - path: /*
         name: Cache-Control
