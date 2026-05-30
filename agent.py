@@ -50,24 +50,28 @@ class LLMAgent:
         # Strip markdown code fences
         text = re.sub(r"^```(?:json)?\s*", "", text)
         text = re.sub(r"\s*```$", "", text)
-        try:
-            data = json.loads(text)
-            return {
-                "reasoning": str(data.get("reasoning", text[:300])),
-                "order_quantity": max(0, int(data.get("order_quantity", 0)))
-            }
-        except Exception:
-            pass
-        match = re.search(r'\{.*\}', text, re.DOTALL)
-        if match:
+
+        for candidate in [text, re.sub(r'\n', r'\\n', text)]:
             try:
-                data = json.loads(match.group())
+                data = json.loads(candidate)
                 return {
-                    "reasoning": str(data.get("reasoning", text[:300])),
+                    "reasoning": str(data.get("reasoning", candidate[:300])),
                     "order_quantity": max(0, int(data.get("order_quantity", 0)))
                 }
             except Exception:
                 pass
+            # Try to find embedded JSON object
+            match = re.search(r'\{.*\}', candidate, re.DOTALL)
+            if match:
+                try:
+                    data = json.loads(match.group())
+                    return {
+                        "reasoning": str(data.get("reasoning", candidate[:300])),
+                        "order_quantity": max(0, int(data.get("order_quantity", 0)))
+                    }
+                except Exception:
+                    pass
+
         # Unparseable — fall back to mock so simulation keeps running
         mock = self._mock_llm_call(fallback_state)
         mock["reasoning"] = f"[Parse error — raw: {text[:200]}] {mock['reasoning']}"
@@ -83,12 +87,31 @@ class LLMAgent:
         )
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"temperature": 0.4, "maxOutputTokens": 512}
+            "generationConfig": {
+                "temperature": 0.4,
+                "maxOutputTokens": 1024,
+                # Force valid JSON output — works for all Gemini models including 2.5
+                "responseMimeType": "application/json",
+                "responseSchema": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "reasoning":      {"type": "STRING"},
+                        "order_quantity": {"type": "INTEGER"}
+                    },
+                    "required": ["reasoning", "order_quantity"]
+                }
+            }
         }
         try:
-            resp = requests.post(url, json=payload, timeout=30)
+            resp = requests.post(url, json=payload, timeout=60)
             resp.raise_for_status()
-            text = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+            parts = resp.json()["candidates"][0]["content"]["parts"]
+            # Thinking models (e.g. gemini-2.5-flash) return a thought part first;
+            # skip it and take only the non-thought text part.
+            text = next(
+                (p["text"] for p in parts if not p.get("thought", False)),
+                parts[0]["text"]
+            )
             return self._parse_response(text, fallback_state)
         except Exception as e:
             fallback = self._mock_llm_call(fallback_state)
