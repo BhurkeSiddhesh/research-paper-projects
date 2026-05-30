@@ -16,11 +16,53 @@
             <div class="logo">
                 <h1>Inv<span>Agent</span></h1>
             </div>
-            <div class="controls">
-                <button id="reset-btn" class="btn btn-secondary">Reset Simulation</button>
-                <button id="step-btn" class="btn btn-primary">Step Simulation</button>
+            <div class="header-right">
+                <span class="llm-badge llm-badge-mock" id="llm-badge">Mock</span>
+                <div class="controls">
+                    <button id="reset-btn" class="btn btn-secondary">Reset Simulation</button>
+                    <button id="step-btn" class="btn btn-primary">Step Simulation</button>
+                </div>
             </div>
         </header>
+
+        <!-- LLM Provider Config -->
+        <div class="glass-panel" id="llm-config-panel">
+            <div class="llm-config-header" id="llm-config-toggle-row">
+                <div class="llm-config-title">
+                    <span class="llm-config-label">LLM Provider</span>
+                    <span class="llm-config-hint">Plug in Gemini, Ollama, or OpenRouter for real CoT</span>
+                </div>
+                <button id="llm-config-toggle" class="llm-toggle-btn" aria-label="Toggle config">▾</button>
+            </div>
+            <div id="llm-config-body" class="llm-config-body">
+                <div class="llm-field-row">
+                    <label for="llm-provider">Provider</label>
+                    <select id="llm-provider" class="llm-select">
+                        <option value="mock">Mock (heuristic, no API)</option>
+                        <option value="gemini">Google Gemini</option>
+                        <option value="ollama">Ollama (local)</option>
+                        <option value="openrouter">OpenRouter / Router API</option>
+                    </select>
+                </div>
+                <div class="llm-field-row" id="llm-key-row" style="display:none">
+                    <label for="llm-api-key">API Key</label>
+                    <input id="llm-api-key" type="password" class="llm-input" placeholder="Paste your API key" autocomplete="off">
+                </div>
+                <div class="llm-field-row" id="llm-url-row" style="display:none">
+                    <label for="llm-base-url">Base URL</label>
+                    <input id="llm-base-url" type="text" class="llm-input" placeholder="http://localhost:11434">
+                </div>
+                <div class="llm-field-row">
+                    <label for="llm-model">Model</label>
+                    <input id="llm-model" type="text" class="llm-input" placeholder="(provider default)">
+                </div>
+                <div class="llm-actions">
+                    <button id="llm-save" class="btn btn-secondary">Save</button>
+                    <button id="llm-test" class="btn btn-primary">Test</button>
+                </div>
+                <p id="llm-status" class="llm-status"></p>
+            </div>
+        </div>
 
         <!-- Research Paper Walkthrough -->
         <section class="glass-panel" id="paper-flow-panel">
@@ -194,5 +236,6 @@
     </div>
     <script src="app.js"></script>
     <script src="paper_flow.js"></script>
+    <script src="llm_config.js"></script>
 </body>
 </html>
