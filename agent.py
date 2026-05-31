@@ -96,32 +96,42 @@ class LLMAgent:
             f"https://generativelanguage.googleapis.com/v1beta/models/"
             f"{model}:generateContent?key={self.api_key}"
         )
+        gen_config = {
+            "temperature": 0.4,
+            "maxOutputTokens": 2048,
+            "responseMimeType": "application/json",
+            "responseSchema": {
+                "type": "OBJECT",
+                "properties": {
+                    "reasoning":      {"type": "STRING"},
+                    "order_quantity": {"type": "INTEGER"}
+                },
+                "required": ["reasoning", "order_quantity"]
+            }
+        }
+        # Gemini 2.5 models "think" before answering, consuming the output
+        # budget and truncating the JSON. Disable thinking so the full answer
+        # fits — the explicit "reasoning" field is the CoT we actually want.
+        if "2.5" in model or "2.0" in model:
+            gen_config["thinkingConfig"] = {"thinkingBudget": 0}
+
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {
-                "temperature": 0.4,
-                "maxOutputTokens": 1024,
-                # Force valid JSON output — works for all Gemini models including 2.5
-                "responseMimeType": "application/json",
-                "responseSchema": {
-                    "type": "OBJECT",
-                    "properties": {
-                        "reasoning":      {"type": "STRING"},
-                        "order_quantity": {"type": "INTEGER"}
-                    },
-                    "required": ["reasoning", "order_quantity"]
-                }
-            }
+            "generationConfig": gen_config
         }
         try:
             resp = requests.post(url, json=payload, timeout=60)
             resp.raise_for_status()
-            parts = resp.json()["candidates"][0]["content"]["parts"]
-            # Thinking models (e.g. gemini-2.5-flash) return a thought part first;
-            # skip it and take only the non-thought text part.
+            candidate = resp.json()["candidates"][0]
+            parts = candidate.get("content", {}).get("parts", [])
+            if not parts:
+                raise ValueError(
+                    f"Empty response (finishReason={candidate.get('finishReason')})"
+                )
+            # Skip any thinking part; take the real text part
             text = next(
-                (p["text"] for p in parts if not p.get("thought", False)),
-                parts[0]["text"]
+                (p["text"] for p in parts if not p.get("thought", False) and "text" in p),
+                parts[0].get("text", "")
             )
             return self._parse_response(text, fallback_state)
         except Exception as e:
