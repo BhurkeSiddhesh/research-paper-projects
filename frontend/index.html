@@ -19,11 +19,30 @@
             <div class="header-right">
                 <span class="llm-badge llm-badge-mock" id="llm-badge">Mock</span>
                 <div class="controls">
-                    <button id="reset-btn" class="btn btn-secondary">Reset Simulation</button>
-                    <button id="step-btn" class="btn btn-primary">Step Simulation</button>
+                    <button id="reset-btn" class="btn btn-secondary">New Episode</button>
+                    <button id="step-btn" class="btn btn-primary">Step →</button>
                 </div>
             </div>
         </header>
+
+        <!-- Scenario selector -->
+        <div class="scenario-bar glass-panel">
+            <span class="scenario-label">Scenario:</span>
+            <div class="scenario-buttons">
+                <button class="scenario-btn" data-scenario="constant">Constant</button>
+                <button class="scenario-btn active" data-scenario="variable">Variable</button>
+                <button class="scenario-btn" data-scenario="larger">Larger</button>
+                <button class="scenario-btn" data-scenario="seasonal">Seasonal</button>
+                <button class="scenario-btn" data-scenario="normal">Normal</button>
+            </div>
+            <div class="episode-progress">
+                <span class="episode-label">Period</span>
+                <div class="period-track">
+                    <div class="period-fill" id="period-fill" style="width:0%"></div>
+                </div>
+                <span class="episode-counter"><span id="period-num">0</span> / 12</span>
+            </div>
+        </div>
 
         <!-- LLM Provider Config -->
         <div class="glass-panel" id="llm-config-panel">
@@ -73,11 +92,7 @@
                 </div>
                 <span class="pf-progress"><span id="pf-step-num">—</span> / <span id="pf-step-total">—</span></span>
             </div>
-
-            <!-- Step timeline -->
             <div class="pf-timeline" id="pf-timeline"></div>
-
-            <!-- Step content -->
             <div class="pf-content">
                 <div class="pf-step-heading">
                     <span class="pf-step-title" id="pf-title">Loading…</span>
@@ -93,8 +108,6 @@
                     <p id="pf-observe"></p>
                 </div>
             </div>
-
-            <!-- Navigation -->
             <div class="pf-nav">
                 <button id="pf-prev" class="btn btn-secondary" disabled>← Prev</button>
                 <button id="pf-next" class="btn btn-primary">Next →</button>
@@ -105,117 +118,183 @@
             <!-- System Overview -->
             <section class="overview glass-panel">
                 <div class="metric">
-                    <h3>Current Time Step</h3>
-                    <p id="time-val" class="highlight-val">0</p>
+                    <h3>Period</h3>
+                    <p id="time-val" class="highlight-val">0 / 12</p>
                 </div>
                 <div class="metric">
                     <h3>Customer Demand</h3>
-                    <p id="demand-val" class="highlight-val">-</p>
+                    <p id="demand-val" class="highlight-val">—</p>
                 </div>
                 <div class="metric">
-                    <h3>Retailer Total Cost</h3>
-                    <p id="retailer-cost-val" class="highlight-val">0</p>
+                    <h3>Scenario</h3>
+                    <p id="scenario-val" class="highlight-val">Variable</p>
                 </div>
                 <div class="metric">
-                    <h3>Distributor Total Cost</h3>
-                    <p id="distributor-cost-val" class="highlight-val">0</p>
+                    <h3>Episode Status</h3>
+                    <p id="status-val" class="highlight-val">Ready</p>
                 </div>
             </section>
 
-            <div class="agents-container">
-                <!-- Retailer Node -->
-                <section class="agent-node glass-panel" id="retailer-node">
+            <!-- 4 Agent Cards (2×2 grid) -->
+            <div class="agents-grid">
+
+                <!-- Stage 0: Retailer -->
+                <section class="agent-node glass-panel" id="stage-0-node">
                     <div class="node-header">
-                        <h2>Retailer Agent</h2>
+                        <div class="node-title-group">
+                            <h2>Retailer</h2>
+                            <span class="stage-badge">Stage 1</span>
+                        </div>
                         <span class="status-badge pulse">Active</span>
                     </div>
                     <div class="stats-grid">
                         <div class="stat">
                             <span class="label">Inventory</span>
-                            <span class="val" id="ret-inv">50</span>
+                            <span class="val" id="s0-inv">12</span>
                         </div>
                         <div class="stat">
                             <span class="label">Backlog</span>
-                            <span class="val" id="ret-back">0</span>
+                            <span class="val" id="s0-back">0</span>
                         </div>
                         <div class="stat">
-                            <span class="label">In Transit</span>
-                            <span class="val" id="ret-trans">0</span>
+                            <span class="label">Pipeline</span>
+                            <span class="val" id="s0-pipe">0</span>
+                        </div>
+                        <div class="stat">
+                            <span class="label">Up. Backlog</span>
+                            <span class="val" id="s0-upback">0</span>
                         </div>
                     </div>
                     <div class="reasoning-box">
                         <h3>LLM Chain-of-Thought</h3>
-                        <p id="ret-reasoning" class="cot-text">Waiting for simulation step...</p>
+                        <p id="s0-reasoning" class="cot-text">Waiting for simulation step…</p>
                         <div class="decision-pill">
-                            Decision: <strong id="ret-decision">Order 0</strong>
+                            Decision: <strong id="s0-decision">Order 0</strong>
                         </div>
+                    </div>
+                    <div class="reward-bar">
+                        <span class="reward-label">Total Reward</span>
+                        <span class="reward-val" id="s0-reward">0</span>
                     </div>
                 </section>
 
-                <!-- Connection line -->
-                <div class="flow-arrow">
-                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M5 12h14M12 5l7 7-7 7"/>
-                    </svg>
-                </div>
-
-                <!-- Distributor Node -->
-                <section class="agent-node glass-panel" id="distributor-node">
+                <!-- Stage 1: Wholesaler -->
+                <section class="agent-node glass-panel" id="stage-1-node">
                     <div class="node-header">
-                        <h2>Distributor Agent</h2>
+                        <div class="node-title-group">
+                            <h2>Wholesaler</h2>
+                            <span class="stage-badge">Stage 2</span>
+                        </div>
                         <span class="status-badge pulse">Active</span>
                     </div>
                     <div class="stats-grid">
                         <div class="stat">
                             <span class="label">Inventory</span>
-                            <span class="val" id="dist-inv">50</span>
+                            <span class="val" id="s1-inv">12</span>
                         </div>
                         <div class="stat">
                             <span class="label">Backlog</span>
-                            <span class="val" id="dist-back">0</span>
+                            <span class="val" id="s1-back">0</span>
                         </div>
                         <div class="stat">
-                            <span class="label">In Transit</span>
-                            <span class="val" id="dist-trans">0</span>
+                            <span class="label">Pipeline</span>
+                            <span class="val" id="s1-pipe">0</span>
+                        </div>
+                        <div class="stat">
+                            <span class="label">Up. Backlog</span>
+                            <span class="val" id="s1-upback">0</span>
                         </div>
                     </div>
                     <div class="reasoning-box">
                         <h3>LLM Chain-of-Thought</h3>
-                        <p id="dist-reasoning" class="cot-text">Waiting for simulation step...</p>
+                        <p id="s1-reasoning" class="cot-text">Waiting for simulation step…</p>
                         <div class="decision-pill">
-                            Decision: <strong id="dist-decision">Order 0</strong>
+                            Decision: <strong id="s1-decision">Order 0</strong>
                         </div>
                     </div>
+                    <div class="reward-bar">
+                        <span class="reward-label">Total Reward</span>
+                        <span class="reward-val" id="s1-reward">0</span>
+                    </div>
                 </section>
-                
-                <!-- Connection line -->
-                <div class="flow-arrow">
-                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M5 12h14M12 5l7 7-7 7"/>
-                    </svg>
-                </div>
-                
-                <!-- Supplier Node (Static) -->
-                <section class="agent-node static-node glass-panel" id="supplier-node">
+
+                <!-- Stage 2: Distributor -->
+                <section class="agent-node glass-panel" id="stage-2-node">
                     <div class="node-header">
-                        <h2>External Supplier</h2>
+                        <div class="node-title-group">
+                            <h2>Distributor</h2>
+                            <span class="stage-badge">Stage 3</span>
+                        </div>
+                        <span class="status-badge pulse">Active</span>
                     </div>
                     <div class="stats-grid">
                         <div class="stat">
-                            <span class="label">Capacity</span>
-                            <span class="val">∞</span>
+                            <span class="label">Inventory</span>
+                            <span class="val" id="s2-inv">12</span>
                         </div>
                         <div class="stat">
-                            <span class="label">Lead Time</span>
-                            <span class="val">2</span>
+                            <span class="label">Backlog</span>
+                            <span class="val" id="s2-back">0</span>
                         </div>
                         <div class="stat">
-                            <span class="label">Status</span>
-                            <span class="val" style="color: var(--success);">Ready</span>
+                            <span class="label">Pipeline</span>
+                            <span class="val" id="s2-pipe">0</span>
+                        </div>
+                        <div class="stat">
+                            <span class="label">Up. Backlog</span>
+                            <span class="val" id="s2-upback">0</span>
                         </div>
                     </div>
                     <div class="reasoning-box">
-                        <p class="cot-text">Infinite capacity. Fulfills distributor orders with a 2-step lead time.</p>
+                        <h3>LLM Chain-of-Thought</h3>
+                        <p id="s2-reasoning" class="cot-text">Waiting for simulation step…</p>
+                        <div class="decision-pill">
+                            Decision: <strong id="s2-decision">Order 0</strong>
+                        </div>
+                    </div>
+                    <div class="reward-bar">
+                        <span class="reward-label">Total Reward</span>
+                        <span class="reward-val" id="s2-reward">0</span>
+                    </div>
+                </section>
+
+                <!-- Stage 3: Manufacturer -->
+                <section class="agent-node glass-panel" id="stage-3-node">
+                    <div class="node-header">
+                        <div class="node-title-group">
+                            <h2>Manufacturer</h2>
+                            <span class="stage-badge">Stage 4</span>
+                        </div>
+                        <span class="status-badge pulse">Active</span>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat">
+                            <span class="label">Inventory</span>
+                            <span class="val" id="s3-inv">12</span>
+                        </div>
+                        <div class="stat">
+                            <span class="label">Backlog</span>
+                            <span class="val" id="s3-back">0</span>
+                        </div>
+                        <div class="stat">
+                            <span class="label">Pipeline</span>
+                            <span class="val" id="s3-pipe">0</span>
+                        </div>
+                        <div class="stat">
+                            <span class="label">Up. Backlog</span>
+                            <span class="val" id="s3-upback">0</span>
+                        </div>
+                    </div>
+                    <div class="reasoning-box">
+                        <h3>LLM Chain-of-Thought</h3>
+                        <p id="s3-reasoning" class="cot-text">Waiting for simulation step…</p>
+                        <div class="decision-pill">
+                            Decision: <strong id="s3-decision">Order 0</strong>
+                        </div>
+                    </div>
+                    <div class="reward-bar">
+                        <span class="reward-label">Total Reward</span>
+                        <span class="reward-val" id="s3-reward">0</span>
                     </div>
                 </section>
 
@@ -228,8 +307,17 @@
                     <span class="step-tag" id="step-tag">—</span>
                 </div>
                 <div id="workflow-steps">
-                    <div class="workflow-empty">Press "Step Simulation" to see the execution trace.</div>
+                    <div class="workflow-empty">Press "Step →" to see the execution trace.</div>
                 </div>
+            </section>
+
+            <!-- Episode Results (shown after period 12) -->
+            <section class="results-panel glass-panel" id="results-panel" style="display:none">
+                <div class="results-header">
+                    <h2>Episode Results</h2>
+                    <span class="results-subtitle">LLM Agents vs. Classical Baselines (12 periods)</span>
+                </div>
+                <div id="results-content"></div>
             </section>
 
         </main>

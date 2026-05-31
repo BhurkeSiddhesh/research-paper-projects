@@ -3,6 +3,8 @@ import re
 import random
 import requests
 
+from environment import STAGE_NAMES
+
 
 class LLMAgent:
     def __init__(self, role, provider="mock", api_key=None, base_url=None, model=None):
@@ -12,48 +14,79 @@ class LLMAgent:
         self.base_url = base_url
         self.model = model
 
-    def generate_order_decision(self, state):
+    def generate_order_decision(self, node_state):
         if self.provider == "mock":
-            return self._mock_llm_call(state)
-        prompt = self._build_prompt(state)
+            return self._mock_decision(node_state)
+        prompt = self._build_prompt(node_state)
         if self.provider == "gemini":
-            return self._gemini_call(prompt, state)
+            return self._gemini_call(prompt, node_state)
         if self.provider == "ollama":
-            return self._ollama_call(prompt, state)
+            return self._ollama_call(prompt, node_state)
         if self.provider == "openrouter":
-            return self._openrouter_call(prompt, state)
-        return self._mock_llm_call(state)
+            return self._openrouter_call(prompt, node_state)
+        return self._mock_decision(node_state)
 
-    def _build_prompt(self, state):
-        cost_line = (
-            "Holding cost $2/unit/period, Stockout cost $5/unit/period"
-            if self.role == "Retailer"
-            else "Holding cost $1/unit/period, Stockout cost $4/unit/period"
+    # ── Prompt (paper Figure 4 / 5 format) ────────────────────────────────
+
+    def _build_prompt(self, s):
+        stage_num = s["stage"] + 1
+        period    = s.get("period", s.get("time", "?"))
+        pipeline  = s.get("pipeline", [])
+        arriving  = pipeline[0] if pipeline else 0
+        hist      = s.get("sales_history", [])
+        avg_sales = round(sum(hist) / len(hist), 1) if hist else 0
+
+        if stage_num == 1:
+            demand_line = f"The customer demand in this round is not yet known (you observe {avg_sales:.1f} avg recent sales)."
+            downstream_line = "You are the most downstream stage; you face external customer demand directly."
+        else:
+            downstream_line = (
+                f"The downstream stage ({STAGE_NAMES[stage_num - 2]}) has placed an order. "
+                f"Your backlog is {s['backlog']} units (unmet downstream demand)."
+            )
+            demand_line = downstream_line
+
+        strategy = (
+            "Minimize total costs: holding cost for excess inventory and backlog cost for unmet demand. "
+            "Balance ordering enough to avoid stockouts without over-ordering and accumulating holding costs. "
+            "Orders are capped at your capacity."
         )
+
         return (
-            f"You are an autonomous supply chain agent acting as the {self.role} "
-            f"in a Beer Game simulation.\n"
-            f"Goal: minimise total costs (holding + stockout) while meeting demand.\n\n"
-            f"Current state (time step {state.get('time', '?')}):\n"
-            f"- Inventory on hand  : {state['inventory']} units\n"
-            f"- Backlog (unmet)    : {state['backlog']} units\n"
-            f"- In-transit orders  : {state['in_transit']} units\n"
-            f"- Cost structure     : {cost_line}\n\n"
-            f"Decide how many units to order from your upstream supplier this period.\n\n"
-            f"IMPORTANT: reply with ONLY a single-line JSON object. "
-            f"Put all reasoning on ONE line (use '; ' not newlines to separate steps). "
-            f"No markdown, no extra text:\n"
-            f'{{ "reasoning": "step1; step2; step3", "order_quantity": 5 }}'
+            f"Now this is round {period}, stage {stage_num} of 4 ({s['name']}). "
+            f"Given your current state:\n"
+            f"- Inventory on hand: {s['inventory']} units\n"
+            f"- Backlog (unmet demand): {s['backlog']} units\n"
+            f"- Upstream backlog (owed to you): {s.get('upstream_backlog', 0)} units\n"
+            f"- In-pipeline (arriving next periods): {pipeline}\n"
+            f"- Units arriving next period: {arriving}\n"
+            f"- Sales history (last periods): {hist}\n"
+            f"- Lead time: {s.get('lead_time', 2)} periods | Capacity: {s.get('capacity', 20)} units\n\n"
+            f"{demand_line}\n\n"
+            f"What is your action for this round?\n"
+            f"{strategy}\n\n"
+            f"Please state your reason in 1-2 sentences first and then provide your action "
+            f"as a non-negative integer within brackets (e.g. [0])."
         )
+
+    # ── Response parsing ───────────────────────────────────────────────────
 
     def _parse_response(self, text, fallback_state):
         text = text.strip()
-        # Strip markdown code fences
-        text = re.sub(r"^```(?:json)?\s*", "", text)
-        text = re.sub(r"\s*```$", "", text)
 
-        # Tier 1: standard JSON parse, then with newlines escaped
-        for candidate in [text, re.sub(r'(?<!\\)\n', r'\\n', text)]:
+        # Primary: paper bracket format [N]
+        m = re.search(r'\[(\d+)\]', text)
+        if m:
+            reasoning = text[:text.rfind('[')].strip() or text
+            return {
+                "reasoning": reasoning[:500],
+                "order_quantity": max(0, int(m.group(1)))
+            }
+
+        # Fallback tier 1: standard JSON
+        text_clean = re.sub(r"^```(?:json)?\s*", "", text)
+        text_clean = re.sub(r"\s*```$", "", text_clean)
+        for candidate in [text_clean, re.sub(r'(?<!\\)\n', r'\\n', text_clean)]:
             try:
                 data = json.loads(candidate)
                 return {
@@ -73,8 +106,8 @@ class LLMAgent:
                 except Exception:
                     pass
 
-        # Tier 2: regex extraction — works even on structurally broken JSON
-        order_match    = re.search(r'"order_quantity"\s*:\s*(\d+)', text)
+        # Fallback tier 2: regex on JSON fields
+        order_match     = re.search(r'"order_quantity"\s*:\s*(\d+)', text)
         reasoning_match = re.search(r'"reasoning"\s*:\s*"((?:[^"\\]|\\.|\n)*)', text)
         if order_match:
             return {
@@ -83,8 +116,8 @@ class LLMAgent:
                 "order_quantity": max(0, int(order_match.group(1)))
             }
 
-        # Tier 3: give up, run mock and tag it
-        mock = self._mock_llm_call(fallback_state)
+        # Give up
+        mock = self._mock_decision(fallback_state)
         mock["reasoning"] = f"[LLM parse failed — raw: {text[:150]}]"
         return mock
 
@@ -96,22 +129,7 @@ class LLMAgent:
             f"https://generativelanguage.googleapis.com/v1beta/models/"
             f"{model}:generateContent?key={self.api_key}"
         )
-        gen_config = {
-            "temperature": 0.4,
-            "maxOutputTokens": 2048,
-            "responseMimeType": "application/json",
-            "responseSchema": {
-                "type": "OBJECT",
-                "properties": {
-                    "reasoning":      {"type": "STRING"},
-                    "order_quantity": {"type": "INTEGER"}
-                },
-                "required": ["reasoning", "order_quantity"]
-            }
-        }
-        # Gemini 2.5 models "think" before answering, consuming the output
-        # budget and truncating the JSON. Disable thinking so the full answer
-        # fits — the explicit "reasoning" field is the CoT we actually want.
+        gen_config = {"temperature": 0.4, "maxOutputTokens": 1024}
         if "2.5" in model or "2.0" in model:
             gen_config["thinkingConfig"] = {"thinkingBudget": 0}
 
@@ -125,17 +143,14 @@ class LLMAgent:
             candidate = resp.json()["candidates"][0]
             parts = candidate.get("content", {}).get("parts", [])
             if not parts:
-                raise ValueError(
-                    f"Empty response (finishReason={candidate.get('finishReason')})"
-                )
-            # Skip any thinking part; take the real text part
+                raise ValueError(f"Empty response (finishReason={candidate.get('finishReason')})")
             text = next(
                 (p["text"] for p in parts if not p.get("thought", False) and "text" in p),
                 parts[0].get("text", "")
             )
             return self._parse_response(text, fallback_state)
         except Exception as e:
-            fallback = self._mock_llm_call(fallback_state)
+            fallback = self._mock_decision(fallback_state)
             fallback["reasoning"] = f"Gemini error: {e}"
             return fallback
 
@@ -146,7 +161,6 @@ class LLMAgent:
             "model": self.model or "llama3",
             "prompt": prompt,
             "stream": False,
-            "format": "json",
             "options": {"temperature": 0.4}
         }
         try:
@@ -155,7 +169,7 @@ class LLMAgent:
             text = resp.json()["response"]
             return self._parse_response(text, fallback_state)
         except Exception as e:
-            fallback = self._mock_llm_call(fallback_state)
+            fallback = self._mock_decision(fallback_state)
             fallback["reasoning"] = f"Ollama error: {e}"
             return fallback
 
@@ -180,31 +194,27 @@ class LLMAgent:
             text = resp.json()["choices"][0]["message"]["content"]
             return self._parse_response(text, fallback_state)
         except Exception as e:
-            fallback = self._mock_llm_call(fallback_state)
+            fallback = self._mock_decision(fallback_state)
             fallback["reasoning"] = f"OpenRouter error: {e}"
             return fallback
 
-    # ── Mock fallback ──────────────────────────────────────────────────────
+    # ── Mock fallback (base-stock heuristic) ──────────────────────────────
 
-    def _mock_llm_call(self, state):
-        position = state["inventory"] + state["in_transit"] - state["backlog"]
-        target = 30
-        if position < target:
-            order_qty = target - position
-            reasoning = (
-                f"Inventory position: {position} "
-                f"(on-hand {state['inventory']} + in-transit {state['in_transit']} "
-                f"- backlog {state['backlog']}). "
-                f"Target is {target}. Ordering {order_qty} units to close the gap."
-            )
-        else:
-            order_qty = 0
-            reasoning = (
-                f"Inventory position: {position}, above the target of {target}. "
-                f"No order needed this period."
-            )
-        if random.random() > 0.8 and order_qty > 0:
-            adj = random.randint(-2, 5)
-            order_qty = max(0, order_qty + adj)
-            reasoning += f" Adjusting by {adj:+d} units for anticipated demand variance."
-        return {"reasoning": reasoning, "order_quantity": order_qty}
+    def _mock_decision(self, s):
+        capacity = s.get("capacity", 20)
+        inv      = s.get("inventory", 0)
+        backlog  = s.get("backlog", 0)
+        up_back  = s.get("upstream_backlog", 0)
+        pipeline = s.get("pipeline", [])
+
+        position = inv - backlog + up_back + sum(pipeline)
+        desired  = capacity
+        order    = min(capacity, max(0, desired - position))
+
+        reasoning = (
+            f"Inventory position = inv({inv}) - backlog({backlog}) + upstream_backlog({up_back}) "
+            f"+ pipeline({sum(pipeline)}) = {position}. "
+            f"Target = capacity ({desired}). "
+            f"Ordering {order} units. [{order}]"
+        )
+        return {"reasoning": reasoning, "order_quantity": order}

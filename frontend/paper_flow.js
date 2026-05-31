@@ -2,18 +2,17 @@ let paperSteps = [];
 let currentPaperStep = 0;
 let completedSteps = new Set();
 
-const pfElements = {
-    timeline: document.getElementById('pf-timeline'),
-    stepNum: document.getElementById('pf-step-num'),
+const pfEl = {
+    timeline:  document.getElementById('pf-timeline'),
+    stepNum:   document.getElementById('pf-step-num'),
     stepTotal: document.getElementById('pf-step-total'),
-    title: document.getElementById('pf-title'),
-    subtitle: document.getElementById('pf-subtitle'),
-    concept: document.getElementById('pf-concept'),
-    insight: document.getElementById('pf-insight'),
-    observe: document.getElementById('pf-observe'),
-    prevBtn: document.getElementById('pf-prev'),
-    nextBtn: document.getElementById('pf-next'),
-    panel: document.getElementById('paper-flow-panel')
+    title:     document.getElementById('pf-title'),
+    subtitle:  document.getElementById('pf-subtitle'),
+    concept:   document.getElementById('pf-concept'),
+    insight:   document.getElementById('pf-insight'),
+    observe:   document.getElementById('pf-observe'),
+    prevBtn:   document.getElementById('pf-prev'),
+    nextBtn:   document.getElementById('pf-next'),
 };
 
 async function initPaperFlow() {
@@ -21,7 +20,7 @@ async function initPaperFlow() {
         const res = await fetch('/api/paper/steps');
         const data = await res.json();
         paperSteps = data.steps;
-        pfElements.stepTotal.textContent = paperSteps.length;
+        pfEl.stepTotal.textContent = paperSteps.length;
         renderTimeline();
         await loadPaperStep(1);
     } catch (e) {
@@ -30,7 +29,7 @@ async function initPaperFlow() {
 }
 
 function renderTimeline() {
-    pfElements.timeline.innerHTML = '';
+    pfEl.timeline.innerHTML = '';
     paperSteps.forEach(s => {
         const dot = document.createElement('button');
         dot.className = 'pf-dot';
@@ -41,12 +40,12 @@ function renderTimeline() {
             <span class="pf-dot-label">${s.title}</span>
         `;
         dot.addEventListener('click', () => loadPaperStep(s.id));
-        pfElements.timeline.appendChild(dot);
+        pfEl.timeline.appendChild(dot);
     });
 }
 
 function updateTimelineState() {
-    pfElements.timeline.querySelectorAll('.pf-dot').forEach(dot => {
+    pfEl.timeline.querySelectorAll('.pf-dot').forEach(dot => {
         const id = parseInt(dot.dataset.id);
         dot.classList.toggle('active', id === currentPaperStep);
         dot.classList.toggle('done', completedSteps.has(id) && id !== currentPaperStep);
@@ -54,9 +53,9 @@ function updateTimelineState() {
 }
 
 async function loadPaperStep(stepId) {
-    pfElements.nextBtn.disabled = true;
-    pfElements.prevBtn.disabled = true;
-    pfElements.nextBtn.textContent = 'Running…';
+    pfEl.nextBtn.disabled = true;
+    pfEl.prevBtn.disabled = true;
+    pfEl.nextBtn.textContent = 'Running…';
 
     try {
         const res = await fetch(`/api/paper/step/${stepId}`, { method: 'POST' });
@@ -66,28 +65,39 @@ async function loadPaperStep(stepId) {
         currentPaperStep = stepId;
         completedSteps.add(stepId);
 
-        // Update content panel
-        pfElements.stepNum.textContent = stepId;
-        pfElements.title.textContent = step.title;
-        pfElements.subtitle.textContent = step.subtitle;
-        pfElements.concept.textContent = step.concept;
-        pfElements.insight.textContent = step.key_insight;
-        pfElements.observe.textContent = step.what_to_observe;
+        pfEl.stepNum.textContent  = stepId;
+        pfEl.title.textContent    = step.title;
+        pfEl.subtitle.textContent = step.subtitle;
+        pfEl.concept.textContent  = step.concept;
+        pfEl.insight.textContent  = step.key_insight;
+        pfEl.observe.textContent  = step.what_to_observe;
 
-        // Update simulation UI if the step ran a sim action
-        if (data.state) {
+        // Update the main simulation UI from returned state
+        if (data.state && typeof updateUI === 'function') {
             updateUI(data.state);
         }
+
+        // If the step ran a simulation step, update agent cards
         if (data.sim_result) {
             const sr = data.sim_result;
-            if (typeof elements !== 'undefined') {
-                elements.demand.textContent = sr.step_details.customer_demand;
-                typeWriterEffect(elements.retReasoning, sr.decisions.retailer.reasoning);
-                elements.retDecision.textContent = `Order ${sr.decisions.retailer.order_quantity}`;
-                typeWriterEffect(elements.distReasoning, sr.decisions.distributor.reasoning);
-                elements.distDecision.textContent = `Order ${sr.decisions.distributor.order_quantity}`;
-                if (sr.step_details.workflow_log) {
-                    renderWorkflowLog(sr.step_details.workflow_log, sr.step_details.time);
+            const decisions = sr.decisions || [];
+
+            decisions.forEach(d => {
+                const prefix = ['s0', 's1', 's2', 's3'][d.stage];
+                if (!prefix) return;
+                const rEl = document.getElementById(`${prefix}-reasoning`);
+                const dEl = document.getElementById(`${prefix}-decision`);
+                if (rEl && typeof typeWriter === 'function') typeWriter(rEl, d.reasoning);
+                if (dEl) dEl.textContent = `Order ${d.order_quantity}`;
+            });
+
+            const sd = sr.step_details;
+            if (sd) {
+                if (typeof renderWorkflowLog === 'function' && sd.workflow_log) {
+                    renderWorkflowLog(sd.workflow_log, sd.period);
+                }
+                if (typeof el !== 'undefined' && el.demandVal) {
+                    el.demandVal.textContent = sd.customer_demand ?? '—';
                 }
             }
         }
@@ -98,35 +108,34 @@ async function loadPaperStep(stepId) {
     } catch (e) {
         console.error('Failed to run paper step', e);
     } finally {
-        pfElements.prevBtn.disabled = currentPaperStep <= 1;
-        pfElements.nextBtn.disabled = currentPaperStep >= paperSteps.length;
-        pfElements.nextBtn.textContent = currentPaperStep >= paperSteps.length ? 'Complete ✓' : 'Next →';
+        pfEl.prevBtn.disabled = currentPaperStep <= 1;
+        pfEl.nextBtn.disabled = currentPaperStep >= paperSteps.length;
+        pfEl.nextBtn.textContent = currentPaperStep >= paperSteps.length ? 'Complete ✓' : 'Next →';
     }
 }
 
 function highlightSection(section) {
-    // Remove previous highlights
-    document.querySelectorAll('.pf-highlight').forEach(el => el.classList.remove('pf-highlight'));
-
+    document.querySelectorAll('.pf-highlight').forEach(e => e.classList.remove('pf-highlight'));
     const targets = {
         overview:  [document.querySelector('.overview')],
-        agents:    [document.querySelector('.agents-container')],
+        agents:    [document.querySelector('.agents-grid')],
+        scenario:  [document.querySelector('.scenario-bar')],
         reasoning: [...document.querySelectorAll('.reasoning-box')],
-        transit:   [...document.querySelectorAll('.stat')].filter(s => s.querySelector('.label')?.textContent === 'In Transit'),
+        transit:   [...document.querySelectorAll('.stat')].filter(
+                       s => s.querySelector('.label')?.textContent === 'Pipeline'),
         costs:     [document.querySelector('.overview')],
         workflow:  [document.getElementById('workflow-log-panel')],
-        all:       [document.querySelector('main')]
+        results:   [document.getElementById('results-panel')],
+        all:       [document.querySelector('main')],
     };
-
-    (targets[section] || []).forEach(el => el && el.classList.add('pf-highlight'));
+    (targets[section] || []).forEach(e => e && e.classList.add('pf-highlight'));
 }
 
-pfElements.nextBtn.addEventListener('click', () => {
+pfEl.nextBtn.addEventListener('click', () => {
     if (currentPaperStep < paperSteps.length) loadPaperStep(currentPaperStep + 1);
 });
-pfElements.prevBtn.addEventListener('click', () => {
+pfEl.prevBtn.addEventListener('click', () => {
     if (currentPaperStep > 1) loadPaperStep(currentPaperStep - 1);
 });
 
-// Init after DOM is ready
 document.addEventListener('DOMContentLoaded', initPaperFlow);
